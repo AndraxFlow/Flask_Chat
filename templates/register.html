@@ -1,0 +1,20 @@
+<form method="POST">
+    <h2>Регистрация</h2>
+    {% with messages = get_flashed_messages() %}
+   {% if messages %}
+      {% for message in messages %}
+         {{ message }}
+      {% endfor %}
+   {% endif %}
+{% endwith %}
+
+
+    <label>Имя пользователя:</label>
+    <input type="text" name="username" required>
+    <label>Email:</label>
+    <input type="email" name="email" required>
+    <label>Пароль:</label>
+    <input type="password" name="password" required>
+    <button type="submit">Зарегистрироваться</button>
+</form>
+<a href="{{ url_for('login') }}">Уже есть аккаунт? Войти</a>

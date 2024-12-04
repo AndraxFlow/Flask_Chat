@@ -1,0 +1,5 @@
+.idea
+/flask_chat_venv
+flask_chat_venv
+__pycache__
+chat.db

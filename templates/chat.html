@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+</head>
+<body>
+    <div id="sidebar">
+        <h3>Available Rooms</h3>
+        <ul id="rooms-list">
+            <!-- Список комнат будет загружен сюда -->
+        </ul>
+        <form id="new-room-form">
+            <input type="text" id="new-room-name" placeholder="New Room Name" required>
+            <button type="submit">Create Room</button>
+        </form>        
+    </div>
+    <div id="main-chat">
+        {% with messages = get_flashed_messages() %}
+   {% if messages %}
+      {% for message in messages %}
+         {{ message }}
+      {% endfor %}
+   {% endif %}
+{% endwith %}
+
+        <p>Вы вошли как: {{ current_user.username }}</p>
+        <a href="{{ url_for('logout') }}">Выйти</a>
+        <!-- Основная область чата -->    
+        <div id="chat">
+            <div id="messages"></div>
+            <button id="scroll-to-bottom" style="display: none;">Прокрутить вниз</button>
+            <form id="message-form">
+                <input type="text" id="message" placeholder="Type your message..." required>
+                <button type="submit">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const username = "{{ username }}";  // Передаём имя пользователя
+        const socket = io();
+        let currentRoom = 'General'; // Текущая комната по умолчанию
+        const chatContainer = document.getElementById('messages');
+        const scrollButton = document.getElementById('scroll-to-bottom');
+
+        chatContainer.addEventListener('scroll', () => {
+            if (isAtBottom(chatContainer)) {
+                scrollButton.style.display = 'none';
+            } else {
+                scrollButton.style.display = 'block';
+            }
+        });
+        
+        scrollButton.addEventListener('click', () => {
+            scrollToBottom(chatContainer);
+        });
+        
+        document.getElementById('message-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = document.getElementById('message').value;
+            room = currentRoom;
+            socket.emit('message', { username, message,room });
+            document.getElementById('message').value = '';
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('/rooms')
+                .then(response => response.json())
+                .then(rooms => {
+                    const roomsList = document.getElementById('rooms-list');
+                    roomsList.innerHTML = ''; // Очищаем список комнат
+                    rooms.forEach(room => {
+                        const roomElement = document.createElement('li');
+                        roomElement.textContent = room.name;
+                        roomElement.dataset.roomId = room.id;
+                        roomElement.style.cursor = 'pointer';
+        
+                        // Переход в комнату при клике
+                        roomElement.addEventListener('click', () => {
+                            joinRoom(room.name);
+                        });
+        
+                        roomsList.appendChild(roomElement);
+                    });
+                })
+                .catch(error => console.error('Error loading rooms:', error));
+        });
+        
+        // Функция для подключения к комнате
+        function joinRoom(roomName) {
+            currentRoom = roomName; // Устанавливаем текущую комнату
+            console.log(`Joining room: ${roomName}`); // Для отладки
+            socket.emit('join', { room: roomName , username:username}); // Отправляем серверу запрос на присоединение
+        }
+
+        socket.on('message', (data) => {
+            const messages = document.getElementById('messages');
+            const wasAtBottom = isAtBottom(chatContainer); // Проверяем, был ли пользователь внизу
+            console.log(wasAtBottom);
+            // Если пришла история сообщений
+            if (data.history) {
+                messages.innerHTML = ''; // Очищаем старые сообщения
+                data.history.forEach((msg) => {
+                    messages.innerHTML =  `<p><b>${msg.username}:</b> ${msg.content} <i>(${msg.timestamp})</i></p>` + messages.innerHTML;
+                });
+                messages.scrollTop = messages.scrollHeight;
+            } else {
+                // Отображаем обычное сообщение
+                messages.innerHTML += `<p><b>${data.username}:</b> ${data.message}</p>`;
+            }
+            // Прокручиваем вниз, если пользователь был внизу
+            if (wasAtBottom) {
+                scrollToBottom(chatContainer);
+            }
+        });
+
+        socket.on('room_list_updated', (data) => {
+            const roomsList = document.getElementById('rooms-list');
+            const roomElement = document.createElement('li');
+            roomElement.textContent = data.room_name;
+            roomElement.style.cursor = 'pointer';
+        
+            roomElement.addEventListener('click', () => {
+                joinRoom(data.room_name);
+            });
+        
+            roomsList.appendChild(roomElement);
+        });
+        
+        document.getElementById('new-room-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const roomName = document.getElementById('new-room-name').value.trim();
+            if (roomName) {
+                socket.emit('new_room', { room_name: roomName });
+                document.getElementById('new-room-name').value = ''; // Очистка поля
+            }
+        });
+
+        function isAtBottom(chatContainer) {
+            // Проверяем, находится ли пользователь внизу
+            return Math.round(chatContainer.scrollHeight - chatContainer.scrollTop) === chatContainer.clientHeight;
+        }  
+        
+        function scrollToBottom(chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+
+    </script>
+</body>
+</html>
