@@ -12,7 +12,7 @@ from flask_login import LoginManager
 app = Flask(__name__)
 app.config.from_object(Config)
 db.init_app(app)
-socketio = SocketIO(app)
+socketio = SocketIO(app,cors_allowed_origins="*")
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -159,4 +159,7 @@ def on_message(data):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    socketio.run(app, debug=True) 
+    socketio.run(app, debug=True,
+                 allow_unsafe_werkzeug=True,
+                 host="0.0.0.0", port=5000,
+                 ) 

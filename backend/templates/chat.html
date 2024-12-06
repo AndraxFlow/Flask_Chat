@@ -42,7 +42,7 @@
 
     <script>
         const username = "{{ username }}";  // Передаём имя пользователя
-        const socket = io();
+        const socket = io("http://localhost:8080");
         let currentRoom = 'General'; // Текущая комната по умолчанию
         const chatContainer = document.getElementById('messages');
         const scrollButton = document.getElementById('scroll-to-bottom');
@@ -149,7 +149,11 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
         
-
+        socket.on("connect", () => {
+            console.log("Connected to server");
+        });
+        
+        socket.emit("create_room", { room: "example-room" });
     </script>
 </body>
 </html>
